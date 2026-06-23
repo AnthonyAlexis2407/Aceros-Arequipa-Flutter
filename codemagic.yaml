@@ -1,6 +1,71 @@
 workflows:
+  # ─────────────────────────────────────────────────────────────
+  # Workflow principal: Solo iOS sin firma
+  # Usa este en Codemagic seleccionando "ios-workflow"
+  # ─────────────────────────────────────────────────────────────
   ios-workflow:
-    name: Flutter iOS Build (unsigned)
+    name: Flutter iOS Build (sin firma)
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      groups:
+        - firebase-secrets   # Crear este grupo en Codemagic → App Settings → Environment variables
+
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+
+      - name: Verify Generated.xcconfig exists
+        script: |
+          if [ ! -f "ios/Flutter/Generated.xcconfig" ]; then
+            echo "ERROR: Generated.xcconfig missing"
+            exit 1
+          fi
+          echo "--- Generated.xcconfig ---"
+          cat ios/Flutter/Generated.xcconfig
+
+      - name: Setup GoogleService-Info.plist
+        script: |
+          if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
+            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > "$CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist"
+            echo "GoogleService-Info.plist instalado correctamente"
+          else
+            echo "ADVERTENCIA: Variable GOOGLE_SERVICE_INFO_PLIST no configurada"
+            echo "Asegúrate de configurarla en Codemagic → Environment variables"
+          fi
+
+      - name: Pod install
+        script: |
+          cd ios && pod install --repo-update
+          echo "Pod install completado"
+
+      - name: Build iOS (no-codesign)
+        script: |
+          flutter build ios --release --no-codesign
+          echo "Build completado exitosamente"
+
+    artifacts:
+      - build/ios/iphoneos/Runner.app
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      email:
+        recipients:
+          - anthonyalexis08@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # ─────────────────────────────────────────────────────────────
+  # Workflow Android + iOS (ambos sin firma de distribución)
+  # Para cuando quieras construir ambas plataformas a la vez
+  # ─────────────────────────────────────────────────────────────
+  android-and-ios:
+    name: Flutter Android + iOS Build
     max_build_duration: 60
     instance_type: mac_mini_m2
 
@@ -10,46 +75,31 @@ workflows:
       cocoapods: default
 
     scripts:
-      # 1. Obtener dependencias de Flutter (también regenera Generated.xcconfig con rutas Mac)
-      - name: Get Flutter packages
-        script: |
-          flutter pub get
+      - name: Flutter pub get
+        script: flutter pub get
 
-      # 2. Verificar que Generated.xcconfig fue creado correctamente
-      - name: Verify Generated.xcconfig
+      - name: Setup GoogleService-Info.plist
         script: |
-          if [ ! -f "ios/Flutter/Generated.xcconfig" ]; then
-            echo "ERROR: Generated.xcconfig no fue creado por flutter pub get"
-            exit 1
+          if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then
+            echo "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > "$CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist"
           fi
-          echo "Generated.xcconfig OK:"
-          cat ios/Flutter/Generated.xcconfig
 
-      # 3. Colocar el GoogleService-Info.plist desde variable secreta de Codemagic
-      #    En Codemagic Dashboard → Environment variables → agregar GOOGLE_SERVICE_INFO_PLIST
-      #    con el contenido del archivo en base64
-      - name: Set up GoogleService-Info.plist
-        script: |
-          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > "$CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist"
-
-      # 4. Instalar pods de CocoaPods
       - name: Pod install
         script: |
           cd ios && pod install --repo-update
 
-      # 5. Compilar iOS SIN firma (no se necesita Apple Developer Account)
-      #    Genera el .app dentro de build/ios/iphoneos/
-      - name: Build iOS (unsigned)
+      - name: Build Android (debug)
+        script: |
+          flutter build apk --debug
+
+      - name: Build iOS (no-codesign)
         script: |
           flutter build ios --release --no-codesign
 
     artifacts:
-      # El .app sin firmar (para simulador o herramientas como AltStore)
+      - build/app/outputs/apk/debug/app-debug.apk
       - build/ios/iphoneos/Runner.app
-      # Logs de Xcode para depurar errores si el build falla
       - /tmp/xcodebuild_logs/*.log
-      # También guarda el .xcarchive si está disponible
-      - $HOME/Library/Developer/Xcode/Archives/**/*.xcarchive
 
     publishing:
       email:
