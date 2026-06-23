@@ -1,0 +1,61 @@
+workflows:
+  ios-workflow:
+    name: Flutter iOS Build
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      # Variables secretas - las defines en el dashboard de Codemagic
+      # No pongas valores reales aquí, solo referencias
+      vars:
+        BUNDLE_ID: "com.example.acerosArequipa"
+        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
+        APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
+        CERTIFICATE_PRIVATE_KEY: $CERTIFICATE_PRIVATE_KEY
+
+    scripts:
+      # 1. Obtener dependencias de Flutter
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      # 2. Colocar el GoogleService-Info.plist (guardado como variable secreta en Codemagic)
+      - name: Set up GoogleService-Info.plist
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+
+      # 3. Instalar pods de CocoaPods
+      - name: Pod install
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+        working_directory: ios
+
+      # 4. Configurar firma de código (para distribuir la app)
+      # OPCIÓN A: Sin firma (solo para probar que compila)
+      # - name: Build iOS (unsigned)
+      #   script: flutter build ios --release --no-codesign
+
+      # OPCIÓN B: Con firma automática de Codemagic (recomendado)
+      - name: Build iOS (signed)
+        script: |
+          flutter build ios --release \
+            --dart-define=FLUTTER_BUILD_NAME=1.0.0 \
+            --dart-define=FLUTTER_BUILD_NUMBER=1
+
+    artifacts:
+      # El .ipa compilado (para instalar en dispositivo o subir a App Store)
+      - build/ios/ipa/*.ipa
+      # Los logs de Xcode (útil para depurar errores)
+      - /tmp/xcodebuild_logs/*.log
+      # El .xcarchive (para archivar manualmente si se necesita)
+      - $HOME/Library/Developer/Xcode/Archives
+
+    publishing:
+      # Notificación por email cuando termina el build
+      email:
+        recipients:
+          - tu-email@ejemplo.com  # Cambia esto por tu email
+        notify:
+          success: true
+          failure: true

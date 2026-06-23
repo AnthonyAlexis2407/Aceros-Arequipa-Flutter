@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "431679242489",
+    "project_id": "appacerosarequipa-e5183",
+    "storage_bucket": "appacerosarequipa-e5183.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:431679242489:android:7dc2de136a2829efa16228",
+        "android_client_info": {
+          "package_name": "com.example.acerosArequipa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADt7S00PXoj2DMHPe9ikGOIY2VyevRp7g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
