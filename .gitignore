@@ -27,7 +27,9 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
-.flutter-plugins-dependencies
+# IMPORTANTE: NO excluir .flutter-plugins-dependencies
+# Codemagic lo necesita para instalar los pods correctamente
+# .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
@@ -43,3 +45,20 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase - SEGURIDAD: no subir archivos con API keys al repositorio
+# Descomenta estas líneas si tu repo es PÚBLICO
+# google-services.json
+# GoogleService-Info.plist
+
+# iOS CocoaPods - no subir Pods (se regeneran con pod install)
+ios/Pods/
+ios/.symlinks/
+ios/Podfile.lock
+
+# iOS Flutter generados - contienen rutas absolutas locales del SO
+# Codemagic los regenera con 'flutter pub get'
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/ephemeral/
+

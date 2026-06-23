@@ -1,61 +1,60 @@
 workflows:
   ios-workflow:
-    name: Flutter iOS Build
+    name: Flutter iOS Build (unsigned)
     max_build_duration: 60
+    instance_type: mac_mini_m2
+
     environment:
       flutter: stable
       xcode: latest
       cocoapods: default
-      # Variables secretas - las defines en el dashboard de Codemagic
-      # No pongas valores reales aquí, solo referencias
-      vars:
-        BUNDLE_ID: "com.example.acerosArequipa"
-        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
-        APP_STORE_CONNECT_KEY_IDENTIFIER: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
-        CERTIFICATE_PRIVATE_KEY: $CERTIFICATE_PRIVATE_KEY
 
     scripts:
-      # 1. Obtener dependencias de Flutter
+      # 1. Obtener dependencias de Flutter (también regenera Generated.xcconfig con rutas Mac)
       - name: Get Flutter packages
-        script: flutter pub get
+        script: |
+          flutter pub get
 
-      # 2. Colocar el GoogleService-Info.plist (guardado como variable secreta en Codemagic)
+      # 2. Verificar que Generated.xcconfig fue creado correctamente
+      - name: Verify Generated.xcconfig
+        script: |
+          if [ ! -f "ios/Flutter/Generated.xcconfig" ]; then
+            echo "ERROR: Generated.xcconfig no fue creado por flutter pub get"
+            exit 1
+          fi
+          echo "Generated.xcconfig OK:"
+          cat ios/Flutter/Generated.xcconfig
+
+      # 3. Colocar el GoogleService-Info.plist desde variable secreta de Codemagic
+      #    En Codemagic Dashboard → Environment variables → agregar GOOGLE_SERVICE_INFO_PLIST
+      #    con el contenido del archivo en base64
       - name: Set up GoogleService-Info.plist
         script: |
-          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > $CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > "$CM_BUILD_DIR/ios/Runner/GoogleService-Info.plist"
 
-      # 3. Instalar pods de CocoaPods
+      # 4. Instalar pods de CocoaPods
       - name: Pod install
         script: |
-          find . -name "Podfile" -execdir pod install \;
-        working_directory: ios
+          cd ios && pod install --repo-update
 
-      # 4. Configurar firma de código (para distribuir la app)
-      # OPCIÓN A: Sin firma (solo para probar que compila)
-      # - name: Build iOS (unsigned)
-      #   script: flutter build ios --release --no-codesign
-
-      # OPCIÓN B: Con firma automática de Codemagic (recomendado)
-      - name: Build iOS (signed)
+      # 5. Compilar iOS SIN firma (no se necesita Apple Developer Account)
+      #    Genera el .app dentro de build/ios/iphoneos/
+      - name: Build iOS (unsigned)
         script: |
-          flutter build ios --release \
-            --dart-define=FLUTTER_BUILD_NAME=1.0.0 \
-            --dart-define=FLUTTER_BUILD_NUMBER=1
+          flutter build ios --release --no-codesign
 
     artifacts:
-      # El .ipa compilado (para instalar en dispositivo o subir a App Store)
-      - build/ios/ipa/*.ipa
-      # Los logs de Xcode (útil para depurar errores)
+      # El .app sin firmar (para simulador o herramientas como AltStore)
+      - build/ios/iphoneos/Runner.app
+      # Logs de Xcode para depurar errores si el build falla
       - /tmp/xcodebuild_logs/*.log
-      # El .xcarchive (para archivar manualmente si se necesita)
-      - $HOME/Library/Developer/Xcode/Archives
+      # También guarda el .xcarchive si está disponible
+      - $HOME/Library/Developer/Xcode/Archives/**/*.xcarchive
 
     publishing:
-      # Notificación por email cuando termina el build
       email:
         recipients:
-          - tu-email@ejemplo.com  # Cambia esto por tu email
+          - anthonyalexis08@gmail.com
         notify:
           success: true
           failure: true
