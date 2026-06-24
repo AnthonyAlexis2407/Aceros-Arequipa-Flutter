@@ -6,6 +6,8 @@ import 'user_store_screen.dart';
 import 'user_cart_screen.dart';
 import 'user_ai_screen.dart';
 import 'user_location_screen.dart';
+import 'bubble_level_screen.dart';
+import 'metal_detector_screen.dart';
 import '../auth/login_screen.dart';
 import '../../../core/utils/session_manager.dart';
 
@@ -186,6 +188,28 @@ class UserShellState extends State<UserShell> {
               onTap: () {
                 Navigator.pop(context);
                 setState(() => _currentIndex = 4);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.architecture, color: Color(0xFF001B5A)),
+              title: const Text('Nivel de Burbuja (Tool)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const BubbleLevelScreen()),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.radar, color: Color(0xFF001B5A)),
+              title: const Text('Detector de Acero (Tool)'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MetalDetectorScreen()),
+                );
               },
             ),
             const Divider(),
